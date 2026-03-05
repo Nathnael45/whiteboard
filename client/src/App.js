@@ -3,6 +3,7 @@ import { io } from "socket.io-client";
 import Toolbar from "./Toolbar";
 import CursorLayer from "./CursorLayer";
 import TextInput from "./TextInput";
+import RoomBar from "./RoomBar";
 
 const SERVER_URL = process.env.REACT_APP_SERVER_URL || "http://localhost:3001";
 
@@ -709,6 +710,15 @@ function Board({ roomId, userName }) {
 
       <CursorLayer cursors={cursors} mySocketId={socketRef.current?.id} />
 
+      <RoomBar
+        roomId={roomId}
+        connected={connected}
+        userCount={userCount}
+        cursors={cursors}
+        myColor={myColor}
+        mySocketId={socketRef.current?.id}
+      />
+
       {textInput && (
         <TextInput
           screenX={textInput.sx} screenY={textInput.sy}
@@ -725,8 +735,6 @@ function Board({ roomId, userName }) {
         myColor={myColor}
         onClear={handleClear} onUndo={handleUndo}
         onExport={handleExport} onResetView={handleResetView}
-        connected={connected} userCount={userCount}
-        roomId={roomId} zoom={zoom}
       />
 
 <div style={zoomBadge}>{Math.round(zoom * 100)}%</div>

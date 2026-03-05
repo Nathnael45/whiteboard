@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 const PRESET_COLORS = [
   "#000000", "#ffffff", "#e74c3c", "#3498db", "#2ecc71",
@@ -21,32 +21,11 @@ const TOOLS = [
 export default function Toolbar({
   tool, setTool, color, setColor, size, setSize,
   myColor, onClear, onUndo, onExport, onResetView,
-  connected, userCount, roomId, zoom,
 }) {
-  const [copied, setCopied] = useState(false);
-
-  const copyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const showColorAndSize = !["select", "pan"].includes(tool);
 
   return (
     <div style={styles.container}>
-      {/* Status */}
-      <div style={styles.statusBar}>
-        <span style={{ ...styles.dot, background: connected ? "#2ecc71" : "#e74c3c" }} />
-        <span style={styles.statusText}>
-          {connected ? `${userCount} online` : "Offline"}
-        </span>
-        <button style={styles.shareBtn} onClick={copyLink}>
-          {copied ? "✓ Copied!" : "Share"}
-        </button>
-      </div>
-
-      <div style={styles.divider} />
 
       {/* Tools grid */}
       <div style={styles.toolGrid}>
@@ -169,23 +148,6 @@ const styles = {
     minWidth: 86,
     maxHeight: "95vh",
     overflowY: "auto",
-  },
-  statusBar: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 3,
-  },
-  dot: { width: 7, height: 7, borderRadius: "50%", display: "block" },
-  statusText: { color: "#888", fontSize: 10, textAlign: "center", whiteSpace: "nowrap" },
-  shareBtn: {
-    background: "rgba(52,152,219,0.15)",
-    border: "1px solid rgba(52,152,219,0.35)",
-    color: "#3498db",
-    borderRadius: 6,
-    padding: "2px 8px",
-    fontSize: 10,
-    cursor: "pointer",
   },
   divider: { width: "100%", height: 1, background: "rgba(255,255,255,0.07)", flexShrink: 0 },
   toolGrid: {
