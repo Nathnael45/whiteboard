@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(lsof -ti:3001)",
+      "Bash(xargs kill -9)"
+    ]
+  }
+}
