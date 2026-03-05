@@ -3,7 +3,6 @@ import { io } from "socket.io-client";
 import Toolbar from "./Toolbar";
 import CursorLayer from "./CursorLayer";
 import TextInput from "./TextInput";
-import Minimap from "./Minimap";
 
 const SERVER_URL = process.env.REACT_APP_SERVER_URL || "http://localhost:3001";
 
@@ -730,15 +729,7 @@ function Board({ roomId, userName }) {
         roomId={roomId} zoom={zoom}
       />
 
-      <Minimap
-        elementsRef={elementsRef}
-        canvasRef={canvasRef}
-        panRef={panRef}
-        zoomRef={zoomRef}
-        onNavigate={(newPan) => { panRef.current = newPan; scheduleRedraw(); }}
-      />
-
-      <div style={zoomBadge}>{Math.round(zoom * 100)}%</div>
+<div style={zoomBadge}>{Math.round(zoom * 100)}%</div>
     </div>
   );
 }
