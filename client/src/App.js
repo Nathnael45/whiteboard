@@ -653,6 +653,7 @@ function Board({ roomId, userName }) {
 
   useEffect(() => {
     const onKey = (e) => {
+      if (navigator.maxTouchPoints > 1) return; // skip shortcuts on touch devices
       if (textInput || stickyInput) return;
       if ((e.ctrlKey || e.metaKey) && e.key === "z") { e.preventDefault(); handleUndo(); }
       if (!e.ctrlKey && !e.metaKey) {
