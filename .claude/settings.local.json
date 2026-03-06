@@ -3,7 +3,12 @@
     "allow": [
       "Bash(npm install)",
       "Bash(lsof -ti:3001)",
-      "Bash(xargs kill -9)"
+      "Bash(xargs kill -9)",
+      "Bash(git add client/src/App.js client/src/Toolbar.js client/src/RoomBar.js)",
+      "Bash(git commit -m \"Add RoomBar with board ID, user avatars, share link, and status\")",
+      "Bash(git push)",
+      "Bash(git add -A)",
+      "Bash(git commit -m \"Add fill mode, opacity, dark bg, chat, user list, sticky notes, image upload, board rename, presentation mode\")"
     ]
   }
 }

@@ -82,8 +82,9 @@ if (process.env.REDIS_URL) {
   console.log("Using in-memory store (set REDIS_URL for persistence)");
 }
 
-// ─── Per-connection cursor state (always in-memory, ephemeral) ────────────────
-const cursors = {}; // roomId -> { socketId: {x,y,color,name} }
+// ─── Per-room ephemeral state ─────────────────────────────────────────────────
+const cursors = {};    // roomId -> { socketId: {x,y,color,name} }
+const boardNames = {}; // roomId -> string
 
 function getRoomCursors(roomId) {
   if (!cursors[roomId]) cursors[roomId] = {};
@@ -113,7 +114,7 @@ io.on("connection", (socket) => {
 
     const elements = await store.getElements(roomId);
 
-    socket.emit("init", { elements, userColor, cursors: roomCursors });
+    socket.emit("init", { elements, userColor, cursors: roomCursors, boardName: boardNames[roomId] || null });
 
     socket.to(roomId).emit("user-joined", {
       socketId: socket.id,
@@ -172,6 +173,17 @@ io.on("connection", (socket) => {
   socket.on("clear", async ({ roomId }) => {
     await store.clearRoom(roomId);
     io.to(roomId).emit("clear");
+  });
+
+  // Chat message — broadcast to others, not persisted
+  socket.on("chat-message", ({ roomId, msg }) => {
+    socket.to(roomId).emit("chat-message", msg);
+  });
+
+  // Board rename
+  socket.on("board-rename", ({ roomId, name }) => {
+    boardNames[roomId] = name;
+    socket.to(roomId).emit("board-rename", { name });
   });
 
   socket.on("disconnect", () => {
