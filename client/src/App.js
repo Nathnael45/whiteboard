@@ -537,7 +537,7 @@ function Board({ roomId, userName }) {
     isDrawing.current = true;
     const id = `${socketRef.current?.id}-${Date.now()}`;
     if (t === "pen" || t === "eraser") {
-      currentStroke.current = { tool: t, color: t === "eraser" ? (darkBgRef.current ? "#1a1a2e" : "#ffffff") : colorRef.current, size: t === "eraser" ? sizeRef.current * 4 : sizeRef.current, opacity: opacityRef.current, points: [world], id };
+      currentStroke.current = { tool: t, color: "#000000", size: t === "eraser" ? sizeRef.current * 4 : sizeRef.current, opacity: opacityRef.current, points: [world], id };
     } else {
       currentStroke.current = { tool: t, color: colorRef.current, size: sizeRef.current, opacity: opacityRef.current, filled: filledRef.current, x1: world.x, y1: world.y, x2: world.x, y2: world.y, id };
     }
@@ -576,14 +576,14 @@ function Board({ roomId, userName }) {
     const t = toolRef.current;
     const now = Date.now();
 
-    if (t === "pen" || t === "eraser") {
+    if (t === "pen") {
       currentStroke.current.points.push(world);
       const ctx = canvasRef.current.getContext("2d");
       ctx.save();
       ctx.translate(panRef.current.x, panRef.current.y);
       ctx.scale(zoomRef.current, zoomRef.current);
-      ctx.globalCompositeOperation = t === "eraser" ? "destination-out" : "source-over";
-      ctx.globalAlpha = t === "eraser" ? 1 : (currentStroke.current.opacity ?? 1);
+      ctx.globalCompositeOperation = "source-over";
+      ctx.globalAlpha = currentStroke.current.opacity ?? 1;
       ctx.strokeStyle = currentStroke.current.color;
       ctx.lineWidth = currentStroke.current.size;
       ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -593,6 +593,11 @@ function Board({ roomId, userName }) {
         ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(c.x, c.y); ctx.stroke();
       }
       ctx.restore();
+      if (now - lastPreviewEmit.current > PREVIEW_INTERVAL) { lastPreviewEmit.current = now; socketRef.current?.emit("draw-preview", { roomId, el: { ...currentStroke.current } }); }
+    } else if (t === "eraser") {
+      currentStroke.current.points.push(world);
+      livePreviewsRef.current["__self__"] = { ...currentStroke.current };
+      scheduleRedraw();
       if (now - lastPreviewEmit.current > PREVIEW_INTERVAL) { lastPreviewEmit.current = now; socketRef.current?.emit("draw-preview", { roomId, el: { ...currentStroke.current } }); }
     } else {
       currentStroke.current = { ...currentStroke.current, x2: world.x, y2: world.y };
