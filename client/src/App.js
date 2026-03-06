@@ -285,6 +285,7 @@ function Board({ roomId, userName }) {
     const ctx = canvas.getContext("2d");
     const dark = darkBgRef.current;
 
+    // Draw background + grid
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = dark ? "#1a1a2e" : "#ffffff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -298,17 +299,29 @@ function Board({ roomId, userName }) {
     for (let y = oy; y < canvas.height; y += gridSize) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
     ctx.restore();
 
-    ctx.save();
-    ctx.translate(panRef.current.x, panRef.current.y);
-    ctx.scale(zoomRef.current, zoomRef.current);
+    // Draw all elements (including erasers) into an offscreen canvas so
+    // destination-out punches real holes before compositing onto background.
+    const off = document.createElement("canvas");
+    off.width = canvas.width; off.height = canvas.height;
+    const octx = off.getContext("2d");
+    octx.save();
+    octx.translate(panRef.current.x, panRef.current.y);
+    octx.scale(zoomRef.current, zoomRef.current);
 
     elementsRef.current.forEach((el) => {
       if (el.tool === "image" && el.src && !el._img && imagesRef.current[el.id]) {
         el._img = imagesRef.current[el.id];
       }
-      drawElement(ctx, el);
+      drawElement(octx, el);
     });
-    Object.values(livePreviewsRef.current).forEach((el) => el && drawElement(ctx, el));
+    Object.values(livePreviewsRef.current).forEach((el) => el && drawElement(octx, el));
+    octx.restore();
+
+    ctx.drawImage(off, 0, 0);
+
+    ctx.save();
+    ctx.translate(panRef.current.x, panRef.current.y);
+    ctx.scale(zoomRef.current, zoomRef.current);
 
     // Draw laser dots
     const now = Date.now();
