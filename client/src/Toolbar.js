@@ -11,15 +11,18 @@ const TOOLS = [
   { id: "pen",    icon: "✏️", label: "Pen"    },
   { id: "eraser", icon: "🧹", label: "Eraser" },
   { id: "line",   icon: "╱",  label: "Line"   },
+  { id: "arrow",  icon: "→",  label: "Arrow"  },
   { id: "rect",   icon: "▭",  label: "Rect"   },
   { id: "circle", icon: "◯",  label: "Circle" },
   { id: "text",   icon: "T",  label: "Text"   },
   { id: "sticky", icon: "📝", label: "Sticky" },
+  { id: "laser",  icon: "🔴", label: "Laser"  },
   { id: "select", icon: "↖",  label: "Select" },
   { id: "pan",    icon: "✋", label: "Pan"    },
 ];
 
 const FILL_TOOLS = ["rect", "circle"];
+const NO_COLOR_TOOLS = ["select", "pan", "sticky", "laser"];
 
 function useIsMobile() {
   const [mobile, setMobile] = useState(window.innerWidth < 640);
@@ -42,9 +45,9 @@ function DesktopToolbar({
   tool, setTool, color, setColor, size, setSize,
   opacity, setOpacity, filled, setFilled,
   darkBg, setDarkBg, myColor,
-  onClear, onUndo, onExport, onResetView, onPresent,
+  onClear, onUndo, onExport, onResetView, onZoomToFit, onPresent,
 }) {
-  const showColorAndSize = !["select", "pan", "sticky"].includes(tool);
+  const showColorAndSize = !NO_COLOR_TOOLS.includes(tool);
   const showFill = FILL_TOOLS.includes(tool);
 
   return (
@@ -100,6 +103,7 @@ function DesktopToolbar({
       <div style={ds.actionCol}>
         <Abtn onClick={onUndo}>↩ Undo</Abtn>
         <Abtn onClick={onResetView}>⊡ Reset View</Abtn>
+        <Abtn onClick={onZoomToFit}>⤢ Fit All</Abtn>
         <Abtn onClick={onExport}>⬇ Export</Abtn>
         <Abtn onClick={onPresent}>⛶ Present</Abtn>
         <Abtn onClick={onClear} danger>✕ Clear All</Abtn>
@@ -145,11 +149,11 @@ function MobileToolbar({
   tool, setTool, color, setColor, size, setSize,
   opacity, setOpacity, filled, setFilled,
   darkBg, setDarkBg, myColor,
-  onClear, onUndo, onExport, onResetView, onPresent,
+  onClear, onUndo, onExport, onResetView, onZoomToFit, onPresent,
 }) {
   const [drawer, setDrawer] = useState(null); // null | "colors" | "size" | "actions"
   const showFill = FILL_TOOLS.includes(tool);
-  const showColorAndSize = !["select", "pan", "sticky"].includes(tool);
+  const showColorAndSize = !NO_COLOR_TOOLS.includes(tool);
 
   const closeDrawer = () => setDrawer(null);
   const toggleDrawer = (name) => setDrawer((d) => d === name ? null : name);
@@ -211,6 +215,7 @@ function MobileToolbar({
                 <div style={ms.actionGrid}>
                   <MobileActionBtn icon="↩" label="Undo" onClick={() => { onUndo(); closeDrawer(); }} />
                   <MobileActionBtn icon="⊡" label="Reset" onClick={() => { onResetView(); closeDrawer(); }} />
+                  <MobileActionBtn icon="⤢" label="Fit All" onClick={() => { onZoomToFit(); closeDrawer(); }} />
                   <MobileActionBtn icon="⬇" label="Export" onClick={() => { onExport(); closeDrawer(); }} />
                   <MobileActionBtn icon="⛶" label="Present" onClick={() => { onPresent(); closeDrawer(); }} />
                   <MobileActionBtn icon={darkBg ? "☀️" : "🌙"} label={darkBg ? "Light" : "Dark"} onClick={() => setDarkBg((v) => !v)} />

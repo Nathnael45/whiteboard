@@ -175,6 +175,11 @@ io.on("connection", (socket) => {
     io.to(roomId).emit("clear");
   });
 
+  // Laser pointer — ephemeral, broadcast to others
+  socket.on("laser", ({ roomId, x, y }) => {
+    socket.to(roomId).emit("laser", { socketId: socket.id, x, y, color: userColor });
+  });
+
   // Chat message — broadcast to others, not persisted
   socket.on("chat-message", ({ roomId, msg }) => {
     socket.to(roomId).emit("chat-message", msg);

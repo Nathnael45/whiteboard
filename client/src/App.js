@@ -50,6 +50,25 @@ export function drawElement(ctx, el) {
       ctx.lineTo(el.x2, el.y2);
       ctx.stroke();
       break;
+    case "arrow": {
+      const dx = el.x2 - el.x1, dy = el.y2 - el.y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 2) break;
+      ctx.beginPath();
+      ctx.moveTo(el.x1, el.y1);
+      ctx.lineTo(el.x2, el.y2);
+      ctx.stroke();
+      const hw = Math.min(18, len * 0.4), hh = hw * 0.5;
+      const angle = Math.atan2(dy, dx);
+      ctx.beginPath();
+      ctx.moveTo(el.x2, el.y2);
+      ctx.lineTo(el.x2 - hw * Math.cos(angle - Math.atan2(hh, hw)), el.y2 - hw * Math.sin(angle - Math.atan2(hh, hw)));
+      ctx.lineTo(el.x2 - hw * Math.cos(angle + Math.atan2(hh, hw)), el.y2 - hw * Math.sin(angle + Math.atan2(hh, hw)));
+      ctx.closePath();
+      ctx.fillStyle = col;
+      ctx.fill();
+      break;
+    }
     case "rect":
       if (el.filled) ctx.fillRect(el.x1, el.y1, el.x2 - el.x1, el.y2 - el.y1);
       else ctx.strokeRect(el.x1, el.y1, el.x2 - el.x1, el.y2 - el.y1);
@@ -99,7 +118,7 @@ function hitTest(el, px, py) {
   switch (el.tool) {
     case "pen": case "eraser":
       return (el.points || []).some((p) => Math.hypot(p.x - px, p.y - py) < T + el.size);
-    case "line":
+    case "line": case "arrow":
       return distToSegment(px, py, el.x1, el.y1, el.x2, el.y2) < T;
     case "rect": case "circle":
       return px >= Math.min(el.x1, el.x2) - T && px <= Math.max(el.x1, el.x2) + T &&
@@ -125,7 +144,7 @@ function translateElement(el, dx, dy) {
   switch (el.tool) {
     case "pen": case "eraser":
       return { ...el, points: el.points.map((p) => ({ x: p.x + dx, y: p.y + dy })) };
-    case "line": case "rect": case "circle":
+    case "line": case "rect": case "circle": case "arrow":
       return { ...el, x1: el.x1 + dx, y1: el.y1 + dy, x2: el.x2 + dx, y2: el.y2 + dy };
     case "text": case "sticky": case "image":
       return { ...el, x: el.x + dx, y: el.y + dy };
@@ -209,6 +228,10 @@ function Board({ roomId, userName }) {
   const PREVIEW_INTERVAL = 50;
   const CURSOR_INTERVAL = 33;
 
+  // Laser pointer: { socketId -> { x, y, color, expiry } }
+  const lasersRef = useRef({});
+  const laserAnimRef = useRef(null);
+
   const [textInput, setTextInput] = useState(null);
   const [stickyInput, setStickyInput] = useState(null);
   const [tool, setTool] = useState("pen");
@@ -287,6 +310,24 @@ function Board({ roomId, userName }) {
     });
     Object.values(livePreviewsRef.current).forEach((el) => el && drawElement(ctx, el));
 
+    // Draw laser dots
+    const now = Date.now();
+    Object.values(lasersRef.current).forEach(({ x, y, color, expiry }) => {
+      const alpha = Math.max(0, (expiry - now) / 1200);
+      if (alpha <= 0) return;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.beginPath();
+      ctx.arc(x, y, 10 / zoomRef.current, 0, Math.PI * 2);
+      ctx.fillStyle = color || "#e74c3c";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y, 4 / zoomRef.current, 0, Math.PI * 2);
+      ctx.fillStyle = "#fff";
+      ctx.fill();
+      ctx.restore();
+    });
+
     if (selectedIdRef.current) {
       const el = elementsRef.current.find((e) => e.id === selectedIdRef.current);
       if (el) {
@@ -317,7 +358,8 @@ function Board({ roomId, userName }) {
 
   useEffect(() => {
     const loop = () => {
-      if (needsRedrawRef.current) { needsRedrawRef.current = false; redrawAll(); }
+      const hasActiveLasers = Object.values(lasersRef.current).some(({ expiry }) => Date.now() < expiry);
+      if (needsRedrawRef.current || hasActiveLasers) { needsRedrawRef.current = false; redrawAll(); }
       animFrameRef.current = requestAnimationFrame(loop);
     };
     animFrameRef.current = requestAnimationFrame(loop);
@@ -385,6 +427,9 @@ function Board({ roomId, userName }) {
       setUnread((n) => n + 1);
     });
     socket.on("board-rename", ({ name }) => setBoardName(name));
+    socket.on("laser", ({ socketId, x, y, color }) => {
+      lasersRef.current[socketId] = { x, y, color, expiry: Date.now() + 1200 };
+    });
 
     return () => socket.disconnect();
   }, [roomId, userName, scheduleRedraw]);
@@ -479,6 +524,7 @@ function Board({ roomId, userName }) {
     const t = toolRef.current;
 
     if (e.button === 1 || t === "pan") { isPanning.current = true; panStart.current = { sx: screen.x, sy: screen.y, px: panRef.current.x, py: panRef.current.y }; return; }
+    if (t === "laser") return; // laser only tracks pointer moves, no stroke
     if (t === "text") { setTextInput({ x: world.x, y: world.y, sx: screen.x, sy: screen.y }); return; }
     if (t === "sticky") { setStickyInput({ x: world.x, y: world.y, sx: screen.x, sy: screen.y }); return; }
     if (t === "select") {
@@ -554,7 +600,15 @@ function Board({ roomId, userName }) {
       scheduleRedraw();
       if (now - lastPreviewEmit.current > PREVIEW_INTERVAL) { lastPreviewEmit.current = now; socketRef.current?.emit("draw-preview", { roomId, el: { ...currentStroke.current } }); }
     }
-    if (now - lastCursorEmit.current > CURSOR_INTERVAL) { lastCursorEmit.current = now; socketRef.current?.emit("cursor-move", { roomId, x: world.x, y: world.y }); }
+    if (now - lastCursorEmit.current > CURSOR_INTERVAL) {
+      lastCursorEmit.current = now;
+      socketRef.current?.emit("cursor-move", { roomId, x: world.x, y: world.y });
+      if (toolRef.current === "laser") {
+        socketRef.current?.emit("laser", { roomId, x: world.x, y: world.y });
+        // local laser dot
+        lasersRef.current["__self__"] = { x: world.x, y: world.y, color: colorRef.current, expiry: Date.now() + 1200 };
+      }
+    }
   }, [toWorld, scheduleRedraw, roomId]);
 
   const stopDraw = useCallback((e) => {
@@ -637,6 +691,31 @@ function Board({ roomId, userName }) {
   const handleResetView = useCallback(() => {
     panRef.current = { x: 0, y: 0 }; zoomRef.current = 1; setZoom(1); scheduleRedraw();
   }, [scheduleRedraw]);
+
+  const handleZoomToFit = useCallback(() => {
+    const els = elementsRef.current;
+    if (!els.length) { handleResetView(); return; }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    els.forEach((el) => {
+      if (el.tool === "pen" || el.tool === "eraser") {
+        (el.points || []).forEach((p) => { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); });
+      } else if (el.tool === "text") {
+        minX = Math.min(minX, el.x); minY = Math.min(minY, el.y - 20); maxX = Math.max(maxX, el.x + 120); maxY = Math.max(maxY, el.y);
+      } else if (el.tool === "sticky") {
+        minX = Math.min(minX, el.x); minY = Math.min(minY, el.y); maxX = Math.max(maxX, el.x + 180); maxY = Math.max(maxY, el.y + 120);
+      } else if (el.tool === "image") {
+        minX = Math.min(minX, el.x); minY = Math.min(minY, el.y); maxX = Math.max(maxX, el.x + (el.w || 200)); maxY = Math.max(maxY, el.y + (el.h || 200));
+      } else {
+        minX = Math.min(minX, el.x1, el.x2); minY = Math.min(minY, el.y1, el.y2); maxX = Math.max(maxX, el.x1, el.x2); maxY = Math.max(maxY, el.y1, el.y2);
+      }
+    });
+    const pad = 60;
+    const cw = window.innerWidth, ch = window.innerHeight;
+    const contentW = maxX - minX + pad * 2, contentH = maxY - minY + pad * 2;
+    const newZoom = Math.min(8, Math.max(0.05, Math.min(cw / contentW, ch / contentH)));
+    panRef.current = { x: (cw - contentW * newZoom) / 2 - (minX - pad) * newZoom, y: (ch - contentH * newZoom) / 2 - (minY - pad) * newZoom };
+    zoomRef.current = newZoom; setZoom(newZoom); scheduleRedraw();
+  }, [handleResetView, scheduleRedraw]);
 
   const handleSendMessage = useCallback((text) => {
     const msg = { text, sender: userName, color: myColor, ts: Date.now() };
@@ -729,6 +808,7 @@ function Board({ roomId, userName }) {
           myColor={myColor}
           onClear={handleClear} onUndo={handleUndo}
           onExport={handleExport} onResetView={handleResetView}
+          onZoomToFit={handleZoomToFit}
           onPresent={() => setPresentMode(true)}
         />
       )}
