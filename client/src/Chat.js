@@ -1,8 +1,21 @@
 import React, { useState, useEffect, useRef } from "react";
 
+const BAR_H = 72; // mobile bottom bar height
+
+function useIsMobile() {
+  const [m, setM] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const fn = () => setM(window.innerWidth < 640);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+  return m;
+}
+
 export default function Chat({ messages, onSend, myColor, userName, onClose }) {
   const [input, setInput] = useState("");
   const bottomRef = useRef(null);
+  const mobile = useIsMobile();
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -15,8 +28,17 @@ export default function Chat({ messages, onSend, myColor, userName, onClose }) {
     setInput("");
   };
 
+  const panelStyle = mobile ? {
+    ...styles.panel,
+    right: 0, left: 0, bottom: BAR_H, top: "auto",
+    transform: "none",
+    width: "100%", maxWidth: "100%",
+    maxHeight: `calc(60vh)`,
+    borderRadius: "14px 14px 0 0",
+  } : styles.panel;
+
   return (
-    <div style={styles.panel}>
+    <div style={panelStyle}>
       <div style={styles.header}>
         <span style={styles.title}>Chat</span>
         <button onClick={onClose} style={styles.closeBtn}>✕</button>

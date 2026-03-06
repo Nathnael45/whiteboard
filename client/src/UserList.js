@@ -1,10 +1,31 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+
+const BAR_H = 72;
+
+function useIsMobile() {
+  const [m, setM] = useState(window.innerWidth < 640);
+  useEffect(() => {
+    const fn = () => setM(window.innerWidth < 640);
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
+  }, []);
+  return m;
+}
 
 export default function UserList({ cursors, mySocketId, myColor, onClose }) {
+  const mobile = useIsMobile();
   const users = Object.entries(cursors);
 
+  const panelStyle = mobile ? {
+    ...styles.panel,
+    right: 0, left: 0, bottom: BAR_H, top: "auto",
+    transform: "none",
+    width: "100%", maxWidth: "100%",
+    borderRadius: "14px 14px 0 0",
+  } : styles.panel;
+
   return (
-    <div style={styles.panel}>
+    <div style={panelStyle}>
       <div style={styles.header}>
         <span style={styles.title}>People ({users.length})</span>
         <button onClick={onClose} style={styles.closeBtn}>✕</button>
